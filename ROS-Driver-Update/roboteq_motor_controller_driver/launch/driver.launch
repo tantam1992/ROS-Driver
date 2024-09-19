@@ -1,11 +1,9 @@
 <launch>
 
-<rosparam command="load" file="$(find roboteq_motor_controller_driver)/config/query.yaml" />
+	<rosparam command="load" file="$(find roboteq_motor_controller_driver)/config/query.yaml" />
+	<arg name="print_cmd_vel" default="False"/>
+	<node name = "roboteq_motor_controller_driver" pkg = "roboteq_motor_controller_driver" type = "roboteq_motor_controller_driver_node" output = "screen" respawn="true" respawn_delay="1">
+		<param name="print_cmd_vel" type="bool" value="$(arg print_cmd_vel)"/>
+	</node>
 
-<node name = "roboteq_motor_controller_driver" pkg = "roboteq_motor_controller_driver" type = "roboteq_motor_controller_driver_node" output = "screen">
-
-
-</node>
-
- 
 </launch>

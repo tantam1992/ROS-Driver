@@ -20,6 +20,10 @@
 #include <roboteq_motor_controller_driver/command_srv.h>
 #include <roboteq_motor_controller_driver/maintenance_srv.h>
 
+#define WHEEL_RADIUS_MULTIPLYER 0.9999 // 1.0 default, increase robot goeas more right, decrease robot goes left
+#define WHEEL_DIST 		0.565	//0.56
+#define WHEEL_RAIDUS 	0.075	//0.075m
+
 class RoboteqDriver
 {
 public:
@@ -40,6 +44,7 @@ private:
 	serial::Serial ser;
 	std::string port;
 	int32_t baud;
+	bool print_cmd_vel_ = false;
 	ros::Publisher read_publisher;
 	ros::Subscriber cmd_vel_sub;
 
@@ -50,12 +55,21 @@ private:
 	int frequencyG;
 	ros::NodeHandle nh;
 
+	typedef struct
+	{
+		int left_wheel_pwm;
+		int right_wheel_pwm;
+	}wheel_pwm_t;
+
 	void initialize()
 	{
 
 		nh.getParam("port", port);
 		nh.getParam("baud", baud);
-		cmd_vel_sub = nh.subscribe("/cmd_vel", 10, &RoboteqDriver::cmd_vel_callback, this);
+		cmd_vel_sub = nh.subscribe("/cmd_vel", 1, &RoboteqDriver::cmd_vel_callback, this);
+
+		ros::NodeHandle nhPriv("~");
+    	nhPriv.getParam("print_cmd_vel", print_cmd_vel_);
 
 		connect();
 	}
@@ -92,18 +106,54 @@ private:
 		run();
 	}
 
+	wheel_pwm_t convert_wheel_pwm(const geometry_msgs::Twist &msg)
+	{
+		double x, z;
+		// speed limit for unexpected condition
+		if (msg.linear.x > 1.5) {
+			x = 1.5;
+		}
+		else if (msg.linear.x < -1.5) {
+			x = -1.5;
+		}
+		else {
+			x = msg.linear.x;
+		}
+		if (msg.angular.z > M_PI / 3) {
+			z = M_PI / 3;
+		}
+		else if (msg.angular.z < -(M_PI / 3)) {
+			z = -(M_PI / 3);
+		}
+		else {
+			z = msg.angular.z;
+		}
+		wheel_pwm_t wheel_pwm;
+		float speed_wish_right = (z*WHEEL_DIST)/2 + x;
+		float speed_wish_left = x*2-speed_wish_right;
+
+		
+		wheel_pwm.left_wheel_pwm = speed_wish_left*9/WHEEL_RAIDUS*WHEEL_RADIUS_MULTIPLYER/3.14*60/3000*1000;
+		wheel_pwm.right_wheel_pwm = speed_wish_right*9/WHEEL_RAIDUS/WHEEL_RADIUS_MULTIPLYER/3.14*60/3000*1000;
+		return wheel_pwm;
+	}
 	void cmd_vel_callback(const geometry_msgs::Twist &msg)
 	{
+		wheel_pwm_t wheel_pwm = convert_wheel_pwm(msg);
 		std::stringstream cmd_sub;
 		cmd_sub << "!G 1"
-				<< " " << msg.linear.x << "_"
+				<< " " << wheel_pwm.left_wheel_pwm << "_"
 				<< "!G 2"
-				<< " " << msg.angular.z << "_";
+				<< " " << wheel_pwm.right_wheel_pwm << "_";
 
 		ser.write(cmd_sub.str());
 		ser.flush();
-		ROS_INFO_STREAM(cmd_sub.str());
+		if (print_cmd_vel_)
+		{
+			ROS_INFO_STREAM(cmd_sub.str());
+		}
 	}
+	//add speed loop here input: RPM left and right +> output: torque l/R
 
 	ros::NodeHandle n;
 	ros::ServiceServer configsrv;
@@ -205,7 +255,7 @@ private:
 		int count = 0;
 		read_publisher = nh.advertise<std_msgs::String>("read", 1000);
 		sleep(2);
-		ros::Rate loop_rate(5);
+		ros::Rate loop_rate(15); //15 change the publish rate for encoder count. Max seem to be 20hz.
 		while (ros::ok())
 		{
 

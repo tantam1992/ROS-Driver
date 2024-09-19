@@ -55,6 +55,8 @@ private:
 
 	double x_final,y_final, theta_final;
 
+	bool publish_tf_;
+
 	ros::Time current_time, last_time;
 
 
