@@ -53,6 +53,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
    FILES
    channel_values.msg
+   BatteryState.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -186,12 +187,12 @@ target_link_libraries(maintenance_client
   ${catkin_LIBRARIES}
 )
 
-add_executable(diff_odom
+add_executable(diff_odom_node
  src/diff_odom.cpp)
 
- add_dependencies(diff_odom  roboteq_motor_controller_driver_generate_messages_cpp)
+ add_dependencies(diff_odom_node  roboteq_motor_controller_driver_generate_messages_cpp)
 
-target_link_libraries(diff_odom
+target_link_libraries(diff_odom_node
   ${catkin_LIBRARIES}
 )
 
@@ -234,6 +235,12 @@ install(TARGETS roboteq_motor_controller_driver_node
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 
+install(TARGETS diff_odom_node
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+ )
+
 ## Mark libraries for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
 # install(TARGETS ${PROJECT_NAME}
@@ -248,8 +255,8 @@ install(TARGETS roboteq_motor_controller_driver_node
 #   FILES_MATCHING PATTERN "*.h"
 #   PATTERN ".svn" EXCLUDE
 # )
-install(DIRECTORY launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+install(DIRECTORY launch config
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
